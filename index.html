@@ -116,11 +116,11 @@ async function go(){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         model:'claude-sonnet-4-6',
-        max_tokens:1000,
+        max_tokens:2000,
         messages:[{role:'user',content:`Analyse these Salesforce event notes for PRP Diagnostic Imaging. COMBINED analysis only — not per note.
 
 Notes:
-${txt.slice(0,5000)}
+${txt.slice(0,8000)}
 
 Respond ONLY in JSON no markdown:
 {"nc":<count>,"sum":"<3-4 sentence summary>","themes":["t1","t2","t3","t4","t5"],"sent":"positive|neutral|negative","sb":{"p":<0-100>,"n":<0-100>,"ng":<0-100>},"sr":"<reason>","acts":["a1","a2","a3","a4","a5"],"risks":["r1","r2"],"opps":["o1","o2"]}`}]
