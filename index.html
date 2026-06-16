@@ -9,6 +9,7 @@
   body{font-family:'Segoe UI',sans-serif;background:#f3f2f1;padding:20px;}
   textarea{width:100%;height:220px;padding:12px;border-radius:6px;border:1px solid #d2d0ce;font-size:13px;font-family:'Segoe UI',sans-serif;color:#252423;resize:vertical;background:#fff;}
   textarea:focus{outline:none;border-color:#0078d4;}
+  .warn{background:#FAEEDA;border:1px solid #EF9F27;border-radius:6px;padding:10px 14px;font-size:12px;color:#633806;margin-top:8px;display:none;}
   .btn{background:#185FA5;color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:13px;cursor:pointer;font-family:'Segoe UI',sans-serif;font-weight:600;margin-top:10px;width:100%;}
   .btn:hover{background:#0C447C;}
   .btn:disabled{background:#B5D4F4;cursor:not-allowed;}
@@ -37,7 +38,6 @@
   .action-num{width:20px;height:20px;background:#185FA5;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px;}
   .action-text{font-size:13px;color:#252423;line-height:1.5;}
   .risk-row{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;}
-  .risk-icon{font-size:13px;flex-shrink:0;margin-top:2px;}
   .risk-text{font-size:12px;color:#252423;line-height:1.5;}
   .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px;}
   .bar-row{display:flex;gap:8px;align-items:center;margin-bottom:6px;}
@@ -45,41 +45,68 @@
   .bar-track{flex:1;height:7px;background:#f3f2f1;border-radius:4px;overflow:hidden;}
   .bar-fill{height:100%;border-radius:4px;}
   .bar-pct{font-size:11px;color:#605e5c;width:30px;text-align:right;}
+  .tip{background:#E6F1FB;border:1px solid #B5D4F4;border-radius:6px;padding:10px 14px;font-size:12px;color:#0C447C;margin-bottom:12px;line-height:1.6;}
 </style>
 </head>
 <body>
 
+<div class="tip">
+  <strong>Tip:</strong> For best results paste notes from <strong>one territory at a time</strong> — filter Power BI by territory first, then copy the SummaryOfCall column. The tool analyses up to ~60 notes per run.
+</div>
+
 <textarea id="notes" placeholder="Paste your Salesforce SummaryOfCall notes here...
 
-Example:
-[14 Apr] Belrose Medical Centre — Face to Face: 3rd highest referrer on beaches, pleased to learn this. Wanted NIPT price...
-
-[20 May] Dee Why Medical — Practice Manager: A4 referrals. Advised Alexander and Suzannah now using e-referrals. 150 referral target discussed...
-
-[16 Apr] Nelson Plaza Clinic — Practice Manager: Advised integration date and 10 PRP practices in Hunter region..."></textarea>
+Filter Power BI by one territory first (e.g. Northern Sydney Region), then copy the SummaryOfCall column and paste here."></textarea>
 <div class="hint" id="hint">0 characters</div>
+<div class="warn" id="warn">Large amount of text detected — only the first ~60 notes will be analysed. For best results filter by territory in Power BI first.</div>
 <button class="btn" id="btn" onclick="go()">Summarize notes</button>
 
 <div id="out"></div>
 
 <script>
-const notes = document.getElementById('notes');
+const MAX_CHARS = 6000;
+const notesEl = document.getElementById('notes');
 const hint = document.getElementById('hint');
+const warn = document.getElementById('warn');
 
-notes.addEventListener('input', () => {
-  const lines = notes.value.split('\n').filter(l => l.trim().length > 20).length;
-  hint.textContent = notes.value.length.toLocaleString() + ' characters · ~' + lines + ' notes';
+notesEl.addEventListener('input', () => {
+  const len = notesEl.value.length;
+  const lines = notesEl.value.split('\n').filter(l => l.trim().length > 15).length;
+  hint.textContent = len.toLocaleString() + ' characters · ~' + lines + ' notes';
+  warn.style.display = len > MAX_CHARS ? 'block' : 'none';
 });
 
 async function go() {
-  const text = notes.value.trim();
-  if(!text) { document.getElementById('out').innerHTML = '<div class="out"><div class="out-body" style="color:#a19f9d;">Paste some notes first.</div></div>'; return; }
+  const fullText = notesEl.value.trim();
+  if(!fullText) {
+    document.getElementById('out').innerHTML = '<div class="out"><div class="out-body" style="color:#a19f9d;">Paste some notes first.</div></div>';
+    return;
+  }
 
+  const text = fullText.slice(0, MAX_CHARS);
   const btn = document.getElementById('btn');
   btn.disabled = true;
   btn.textContent = 'Analysing...';
 
   document.getElementById('out').innerHTML = '<div class="loading"><div class="spin"></div>Analysing notes with AI — usually takes 5-10 seconds...</div>';
+
+  const prompt = `You are a senior CRM analyst for a medical imaging company called PRP Diagnostic Imaging. Analyse these Salesforce event notes and provide a COMBINED summary across all notes — do NOT summarise each note separately.
+
+Notes:
+${text}
+
+Respond ONLY in JSON with no markdown fences:
+{
+  "noteCount": <estimated number of separate notes>,
+  "summary": "<3-4 sentence combined executive summary of overall activity and patterns>",
+  "themes": ["<theme1>","<theme2>","<theme3>","<theme4>","<theme5>"],
+  "sentiment": "positive|neutral|negative",
+  "sentimentBreakdown": {"positive": <0-100>, "neutral": <0-100>, "negative": <0-100>},
+  "sentimentReason": "<brief explanation of overall sentiment>",
+  "actions": ["<action1>","<action2>","<action3>","<action4>","<action5>"],
+  "risks": ["<risk1>","<risk2>"],
+  "opportunities": ["<opp1>","<opp2>"]
+}`;
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -88,43 +115,30 @@ async function go() {
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 1200,
-        messages: [{
-          role: 'user',
-          content: `You are a senior CRM analyst for a medical imaging company. Analyse these Salesforce event notes and provide a COMBINED summary across all notes.
-
-Notes:
-${text.slice(0, 5000)}
-
-Respond ONLY in JSON (no markdown):
-{
-  "noteCount": <number>,
-  "summary": "<3-4 sentence combined executive summary>",
-  "themes": ["<theme1>","<theme2>","<theme3>","<theme4>","<theme5>"],
-  "sentiment": "positive|neutral|negative",
-  "sentimentBreakdown": {"positive": <0-100>, "neutral": <0-100>, "negative": <0-100>},
-  "sentimentReason": "<brief explanation>",
-  "actions": ["<action1>","<action2>","<action3>","<action4>","<action5>"],
-  "risks": ["<risk1>","<risk2>"],
-  "opportunities": ["<opp1>","<opp2>"]
-}`
-        }]
+        messages: [{ role: 'user', content: prompt }]
       })
     });
 
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || 'API error');
+    }
+
     const data = await res.json();
     const raw = data.content.map(b => b.text || '').join('');
-    const d = JSON.parse(raw.replace(/```json|```/g, '').trim());
-    render(d);
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const d = JSON.parse(clean);
+    render(d, fullText.length > MAX_CHARS);
 
   } catch(e) {
-    document.getElementById('out').innerHTML = '<div class="out"><div class="out-body" style="color:#a32d2d;">Something went wrong — please try again.</div></div>';
+    document.getElementById('out').innerHTML = `<div class="out"><div class="out-body" style="color:#a32d2d;font-size:13px;">Error: ${e.message || 'Something went wrong — please try again.'}</div></div>`;
   } finally {
     btn.disabled = false;
     btn.textContent = 'Summarize notes';
   }
 }
 
-function render(d) {
+function render(d, trimmed) {
   const sc = d.sentiment === 'positive' ? 'sent-pos' : d.sentiment === 'negative' ? 'sent-neg' : 'sent-neu';
   const total = Math.max((d.sentimentBreakdown.positive||0)+(d.sentimentBreakdown.neutral||0)+(d.sentimentBreakdown.negative||0), 1);
   const posPct = Math.round((d.sentimentBreakdown.positive||0)/total*100);
@@ -133,13 +147,14 @@ function render(d) {
   const tagCls = ['t-blue','t-green','t-amber','t-teal','t-red'];
   const themes = (d.themes||[]).map((t,i) => `<span class="tag ${tagCls[i%5]}">${t}</span>`).join('');
   const actions = (d.actions||[]).map((a,i) => `<div class="action-row"><div class="action-num">${i+1}</div><div class="action-text">${a}</div></div>`).join('');
-  const risks = (d.risks||[]).map(r => `<div class="risk-row"><span class="risk-icon" style="color:#a32d2d;">&#9650;</span><div class="risk-text">${r}</div></div>`).join('');
-  const opps = (d.opportunities||[]).map(o => `<div class="risk-row"><span class="risk-icon" style="color:#3b6d11;">&#8593;</span><div class="risk-text">${o}</div></div>`).join('');
+  const risks = (d.risks||[]).map(r => `<div class="risk-row"><span style="color:#a32d2d;flex-shrink:0;font-size:13px;">&#9650;</span><div class="risk-text" style="margin-left:4px;">${r}</div></div>`).join('');
+  const opps = (d.opportunities||[]).map(o => `<div class="risk-row"><span style="color:#3b6d11;flex-shrink:0;font-size:13px;">&#8593;</span><div class="risk-text" style="margin-left:4px;">${o}</div></div>`).join('');
+  const trimNote = trimmed ? '<div style="font-size:11px;color:#a19f9d;margin-top:4px;">Note: large input was trimmed — filter by territory in Power BI for a more complete analysis</div>' : '';
 
   document.getElementById('out').innerHTML = `
     <div class="out">
       <div class="out-head">
-        ${d.noteCount || '?'} notes analysed
+        ${d.noteCount || '?'} notes analysed ${trimNote}
         <span class="sent-badge ${sc}">${d.sentiment}</span>
       </div>
       <div class="out-body">
@@ -151,7 +166,7 @@ function render(d) {
         <div class="bar-row"><span class="bar-label">Positive</span><div class="bar-track"><div class="bar-fill" style="width:${posPct}%;background:#639922;"></div></div><span class="bar-pct">${posPct}%</span></div>
         <div class="bar-row"><span class="bar-label">Neutral</span><div class="bar-track"><div class="bar-fill" style="width:${neuPct}%;background:#EF9F27;"></div></div><span class="bar-pct">${neuPct}%</span></div>
         <div class="bar-row"><span class="bar-label">Negative</span><div class="bar-track"><div class="bar-fill" style="width:${negPct}%;background:#E24B4A;"></div></div><span class="bar-pct">${negPct}%</span></div>
-        <div style="font-size:11px;color:#605e5c;margin-top:6px;margin-bottom:14px;">${d.sentimentReason}</div>
+        <div style="font-size:11px;color:#605e5c;margin-top:6px;margin-bottom:14px;line-height:1.6;">${d.sentimentReason}</div>
         <div class="divider"></div>
         <div class="section-title">Action items</div>
         <div style="margin-bottom:14px;">${actions}</div>
