@@ -3,137 +3,174 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>PRP Notes Summarizer</title>
+<title>PRP Notes Summariser</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Segoe UI',sans-serif;background:#f3f2f1;padding:20px;max-width:900px;margin:0 auto;}
-.header{background:#185FA5;border-radius:8px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;}
-.header-title{color:#fff;font-size:15px;font-weight:600;}
-.header-sub{color:#B5D4F4;font-size:11px;margin-top:3px;}
-.auto-badge{background:#EAF3DE;color:#27500A;font-size:11px;padding:4px 10px;border-radius:4px;font-weight:600;}
-.notes-card{background:#fff;border:1px solid #d2d0ce;border-radius:6px;padding:14px 16px;margin-bottom:12px;}
-.notes-label{font-size:11px;font-weight:600;color:#605e5c;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;}
-textarea{width:100%;height:180px;padding:10px;border-radius:6px;border:1px solid #d2d0ce;font-size:12px;font-family:'Segoe UI',sans-serif;color:#252423;resize:vertical;background:#fafafa;}
-textarea:focus{outline:none;border-color:#0078d4;background:#fff;}
-.hint{font-size:10px;color:#a19f9d;text-align:right;margin-top:5px;}
-.btn{background:#185FA5;color:#fff;border:none;padding:11px;border-radius:6px;font-size:14px;cursor:pointer;width:100%;font-weight:600;font-family:'Segoe UI',sans-serif;margin-top:4px;}
-.btn:hover{background:#0C447C;}
-.btn:disabled{background:#B5D4F4;cursor:not-allowed;}
-.loading{display:flex;align-items:center;gap:10px;padding:16px;color:#605e5c;font-size:13px;background:#fff;border-radius:6px;margin-top:12px;border:1px solid #d2d0ce;}
-.spin{width:18px;height:18px;border:2px solid #d2d0ce;border-top-color:#185FA5;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;}
+body{font-family:'Segoe UI',sans-serif;background:#eef2f7;min-height:100vh;padding:24px;}
+.page{max-width:860px;margin:0 auto;}
+.header{background:linear-gradient(135deg,#5c1a8e 0%,#7b2fbe 35%,#185FA5 100%);border-radius:12px;padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;}
+.header-left{display:flex;align-items:center;gap:14px;}
+.header-logo{width:42px;height:42px;background:rgba(255,255,255,0.15);border-radius:8px;display:flex;align-items:center;justify-content:center;}
+.header-title{color:#fff;font-size:17px;font-weight:600;letter-spacing:-0.2px;}
+.header-sub{color:rgba(255,255,255,0.7);font-size:12px;margin-top:3px;}
+.header-badge{background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.35);color:#fff;font-size:11px;padding:5px 12px;border-radius:20px;font-weight:500;display:none;}
+.header-badge.show{display:block;}
+.info-bar{background:#E8F4FD;border:1px solid #B8DAFF;border-radius:8px;padding:11px 16px;margin-bottom:16px;display:none;align-items:center;gap:10px;font-size:12px;color:#1a5f8a;}
+.info-bar.show{display:flex;}
+.card{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04);margin-bottom:16px;overflow:hidden;}
+.card-header{padding:14px 18px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-size:12px;font-weight:600;color:#444;text-transform:uppercase;letter-spacing:0.06em;display:flex;align-items:center;gap:7px;}
+.note-territory{font-size:11px;color:#5c1a8e;font-weight:500;background:#f3e8ff;padding:3px 9px;border-radius:12px;display:none;}
+.card-body{padding:16px 18px;}
+textarea{width:100%;height:190px;padding:12px;border-radius:8px;border:1.5px solid #e0e0e0;font-size:12px;font-family:'Segoe UI',sans-serif;color:#333;resize:vertical;background:#fafafa;transition:border-color .2s,background .2s;line-height:1.6;}
+textarea:focus{outline:none;border-color:#7b2fbe;background:#fff;}
+.char-count{font-size:11px;color:#aaa;text-align:right;margin-top:6px;}
+.btn-summarise{background:linear-gradient(135deg,#5c1a8e 0%,#7b2fbe 50%,#185FA5 100%);color:#fff;border:none;padding:13px;border-radius:8px;font-size:14px;cursor:pointer;width:100%;font-weight:600;font-family:'Segoe UI',sans-serif;margin-top:10px;letter-spacing:0.2px;transition:opacity .2s,transform .1s;}
+.btn-summarise:hover{opacity:0.9;}
+.btn-summarise:active{transform:scale(0.99);}
+.btn-summarise:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
+.loading-card{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,0.08);padding:20px 18px;display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+.spin{width:20px;height:20px;border:2.5px solid #e0e0e0;border-top-color:#7b2fbe;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;}
 @keyframes spin{to{transform:rotate(360deg);}}
-.out{background:#fff;border:1px solid #d2d0ce;border-radius:6px;margin-top:12px;overflow:hidden;}
-.out-head{background:#185FA5;padding:12px 16px;color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between;}
-.sent{font-size:11px;padding:3px 10px;border-radius:3px;font-weight:600;}
-.sp{background:#EAF3DE;color:#27500A;}
-.sn{background:#FAEEDA;color:#633806;}
-.sg{background:#FCEBEB;color:#791F1F;}
-.out-body{padding:14px 16px;}
-.stitle{font-size:11px;font-weight:700;color:#605e5c;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;}
-.stext{font-size:13px;color:#252423;line-height:1.7;margin-bottom:12px;}
-.tag{display:inline-block;font-size:11px;padding:3px 9px;border-radius:3px;margin:2px;font-weight:600;}
-.tb{background:#E6F1FB;color:#0C447C;}
-.tg{background:#EAF3DE;color:#27500A;}
-.ta{background:#FAEEDA;color:#633806;}
-.tt{background:#E1F5EE;color:#085041;}
-.tr{background:#FCEBEB;color:#791F1F;}
-.div{height:1px;background:#edebe9;margin:12px 0;}
-.arow{display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid #edebe9;}
-.arow:last-child{border-bottom:none;}
-.anum{width:19px;height:19px;background:#185FA5;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px;}
-.atext{font-size:12px;color:#252423;line-height:1.5;}
-.brow{display:flex;gap:8px;align-items:center;margin-bottom:5px;}
-.blab{font-size:11px;color:#605e5c;width:56px;flex-shrink:0;}
-.btrk{flex:1;height:7px;background:#f3f2f1;border-radius:3px;overflow:hidden;}
-.bfil{height:100%;border-radius:3px;}
-.bpct{font-size:11px;color:#605e5c;width:30px;text-align:right;}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-.rrow{display:flex;gap:6px;margin-bottom:6px;}
-.rtext{font-size:12px;color:#252423;line-height:1.4;}
-.info{background:#E6F1FB;border:1px solid #B5D4F4;border-radius:6px;padding:10px 14px;font-size:12px;color:#0C447C;margin-bottom:12px;line-height:1.6;}
+.loading-text{font-size:13px;color:#666;}
+.result-header{background:linear-gradient(135deg,#5c1a8e 0%,#7b2fbe 35%,#185FA5 100%);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;}
+.result-count{color:#fff;font-size:13px;font-weight:600;}
+.result-count span{color:rgba(255,255,255,0.65);font-size:11px;font-weight:400;margin-left:6px;}
+.sent-pill{font-size:11px;font-weight:600;padding:4px 12px;border-radius:12px;}
+.sp{background:#d4edda;color:#155724;}
+.sn{background:#fff3cd;color:#856404;}
+.sg{background:#f8d7da;color:#721c24;}
+.section{padding:16px 18px;border-bottom:1px solid #f5f5f5;}
+.section:last-child{border-bottom:none;}
+.section-label{font-size:10px;font-weight:700;color:#7b2fbe;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.summary-text{font-size:13px;color:#333;line-height:1.75;}
+.tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px;}
+.tag{font-size:11px;padding:4px 11px;border-radius:12px;font-weight:500;}
+.tb{background:#ede9fe;color:#4c1d95;}
+.tg{background:#E8F5E9;color:#2E7D32;}
+.ta{background:#FFF8E1;color:#F57F17;}
+.tt{background:#E0F2F1;color:#00695C;}
+.tr{background:#FCE4EC;color:#880E4F;}
+.action-list{display:flex;flex-direction:column;gap:8px;}
+.action-item{display:flex;gap:10px;align-items:flex-start;}
+.action-num{width:22px;height:22px;background:linear-gradient(135deg,#7b2fbe,#185FA5);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px;}
+.action-text{font-size:13px;color:#333;line-height:1.5;}
+.sentiment-bars{display:flex;flex-direction:column;gap:8px;}
+.bar-row{display:flex;gap:10px;align-items:center;}
+.bar-label{font-size:12px;color:#666;width:60px;flex-shrink:0;}
+.bar-track{flex:1;height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:4px;}
+.bar-pct{font-size:12px;color:#666;width:34px;text-align:right;font-weight:500;}
+.sent-reason{font-size:12px;color:#666;margin-top:10px;line-height:1.6;font-style:italic;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:0;}
+.two-col-item{padding:16px 18px;}
+.two-col-item:first-child{border-right:1px solid #f5f5f5;}
+.risk-item{display:flex;gap:8px;margin-bottom:8px;align-items:flex-start;}
+.risk-text{font-size:12px;color:#333;line-height:1.5;}
+.none-text{font-size:12px;color:#bbb;font-style:italic;}
+.footer{text-align:center;font-size:11px;color:#bbb;margin-top:16px;padding-bottom:8px;}
 </style>
 </head>
 <body>
+<div class="page">
 
 <div class="header">
-  <div>
-    <div class="header-title">PRP Diagnostic Imaging · Notes Summarizer</div>
-    <div class="header-sub">Auto-loads notes from Power BI · paste manually or let it auto-summarize</div>
+  <div class="header-left">
+    <div class="header-logo">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+    </div>
+    <div>
+      <div class="header-title">PRP Diagnostic Imaging · Notes Summariser</div>
+      <div class="header-sub">Auto-loads from Power BI · AI-powered analysis</div>
+    </div>
   </div>
-  <span class="auto-badge" id="autoBadge" style="display:none">Auto-loaded from Power BI</span>
+  <div class="header-badge" id="autoBadge">✓ Auto-loaded from Power BI</div>
 </div>
 
-<div id="infoBox" class="info" style="display:none">
-  Notes have been automatically loaded from your Power BI filter. Click Summarize to analyse them.
+<div class="info-bar" id="infoBar">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a5f8a" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+  Notes have been automatically loaded from your Power BI filter. Click <strong style="margin:0 3px;">Summarise</strong> to analyse them.
 </div>
 
-<div class="notes-card">
-  <div class="notes-label">Notes <span id="noteSource" style="font-weight:400;text-transform:none;font-size:10px;color:#a19f9d;"></span></div>
-  <textarea id="n" placeholder="Filter Power BI by territory, then click the Summarize button in Power BI — notes will auto-load here. Or paste manually."></textarea>
-  <div class="hint" id="h">0 characters</div>
-  <button class="btn" id="btn" onclick="go()">Summarize notes</button>
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7b2fbe" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Notes
+    </div>
+    <span class="note-territory" id="noteTerritory"></span>
+  </div>
+  <div class="card-body">
+    <textarea id="n" placeholder="Filter Power BI by territory, then click the Summarise button in Power BI — notes will auto-load here.&#10;&#10;Or paste notes manually from your Salesforce event table."></textarea>
+    <div class="char-count" id="h">0 characters</div>
+    <button class="btn-summarise" id="btn" onclick="go()">Summarise notes</button>
+  </div>
 </div>
 
 <div id="o"></div>
 
-<script>
-const WORKER = 'https://prp-summarizer.srinath-jagannathan.workers.dev';
+<div class="footer">PRP Diagnostic Imaging · Notes Summariser · Powered by Claude AI</div>
 
-function init() {
-  const params = new URLSearchParams(window.location.search);
-  const notes = params.get('notes');
-  const territory = params.get('territory');
-  if(notes && notes.trim().length > 0) {
-    const decoded = decodeURIComponent(notes);
-    document.getElementById('n').value = decoded;
-    document.getElementById('autoBadge').style.display = 'inline-block';
-    document.getElementById('infoBox').style.display = 'block';
-    if(territory) {
-      document.getElementById('noteSource').textContent = '· ' + decodeURIComponent(territory);
+</div>
+<script>
+const WORKER='https://prp-summarizer.srinath-jagannathan.workers.dev';
+
+function init(){
+  const p=new URLSearchParams(window.location.search);
+  const notes=p.get('notes');
+  const territory=p.get('territory');
+  if(notes&&notes.trim()){
+    document.getElementById('n').value=decodeURIComponent(notes.replace(/\+/g,' '));
+    document.getElementById('autoBadge').classList.add('show');
+    document.getElementById('infoBar').classList.add('show');
+    if(territory){
+      const t=document.getElementById('noteTerritory');
+      t.textContent=decodeURIComponent(territory.replace(/\+/g,' '));
+      t.style.display='block';
     }
     updateHint();
     go();
   }
 }
 
-function updateHint() {
-  const val = document.getElementById('n').value;
-  const lines = val.split('\n').filter(l=>l.trim().length>15).length;
-  document.getElementById('h').textContent = val.length.toLocaleString()+' characters · ~'+lines+' notes';
+function updateHint(){
+  const v=document.getElementById('n').value;
+  const lines=v.split('\n').filter(l=>l.trim().length>15).length;
+  document.getElementById('h').textContent=v.length.toLocaleString()+' characters · ~'+lines+' notes';
 }
 
-document.getElementById('n').addEventListener('input', updateHint);
+document.getElementById('n').addEventListener('input',updateHint);
 
 async function go(){
-  const txt = document.getElementById('n').value.trim();
-  if(!txt){ document.getElementById('o').innerHTML='<div class="out"><div class="out-body" style="color:#a19f9d;font-size:13px;">Paste some notes first.</div></div>'; return; }
-  const btn = document.getElementById('btn');
-  btn.disabled=true; btn.textContent='Analysing...';
-  document.getElementById('o').innerHTML='<div class="loading"><div class="spin"></div>Analysing notes with AI — usually 5-10 seconds...</div>';
+  const txt=document.getElementById('n').value.trim();
+  if(!txt){document.getElementById('o').innerHTML='<div class="card"><div class="card-body" style="color:#bbb;font-size:13px;text-align:center;padding:24px;">Paste some notes first.</div></div>';return;}
+  const btn=document.getElementById('btn');
+  btn.disabled=true;btn.textContent='Analysing...';
+  document.getElementById('o').innerHTML='<div class="loading-card"><div class="spin"></div><div class="loading-text">Analysing notes with AI — usually 5-10 seconds...</div></div>';
   try{
-    const res = await fetch(WORKER, {
+    const res=await fetch(WORKER,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         model:'claude-sonnet-4-6',
         max_tokens:2000,
-        messages:[{role:'user',content:`Analyse these Salesforce event notes for PRP Diagnostic Imaging. COMBINED analysis only — not per note.
+        messages:[{role:'user',content:`You are a senior CRM analyst for PRP Diagnostic Imaging Australia. Analyse these Salesforce event notes and provide a COMBINED analysis — not per note.
 
 Notes:
 ${txt.slice(0,8000)}
 
 Respond ONLY in JSON no markdown:
-{"nc":<count>,"sum":"<3-4 sentence summary>","themes":["t1","t2","t3","t4","t5"],"sent":"positive|neutral|negative","sb":{"p":<0-100>,"n":<0-100>,"ng":<0-100>},"sr":"<reason>","acts":["a1","a2","a3","a4","a5"],"risks":["r1","r2"],"opps":["o1","o2"]}`}]
+{"nc":<count>,"sum":"<4-5 sentence executive summary>","themes":["t1","t2","t3","t4","t5"],"sent":"positive|neutral|negative","sb":{"p":<0-100>,"n":<0-100>,"ng":<0-100>},"sr":"<2 sentence sentiment explanation>","acts":["a1","a2","a3","a4","a5"],"risks":["r1","r2"],"opps":["o1","o2"]}`}]
       })
     });
-    if(!res.ok){ const e=await res.json(); throw new Error(e.error?.message||'Error '+res.status); }
+    if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'Error '+res.status);}
     const data=await res.json();
     const d=JSON.parse(data.content.map(b=>b.text||'').join('').replace(/```json|```/g,'').trim());
     render(d);
   }catch(e){
-    document.getElementById('o').innerHTML=`<div class="out"><div class="out-body" style="color:#a32d2d;font-size:13px;">Error: ${e.message}</div></div>`;
+    document.getElementById('o').innerHTML=`<div class="card"><div class="card-body" style="color:#c0392b;font-size:13px;">Error: ${e.message}</div></div>`;
   }finally{
-    btn.disabled=false; btn.textContent='Summarize notes';
+    btn.disabled=false;btn.textContent='Summarise notes';
   }
 }
 
@@ -145,29 +182,56 @@ function render(d){
   const ngp=Math.round((d.sb.ng||0)/tot*100);
   const tc=['tb','tg','ta','tt','tr'];
   const themes=(d.themes||[]).map((t,i)=>`<span class="tag ${tc[i%5]}">${t}</span>`).join('');
-  const acts=(d.acts||[]).map((a,i)=>`<div class="arow"><div class="anum">${i+1}</div><div class="atext">${a}</div></div>`).join('');
-  const risks=(d.risks||[]).map(r=>`<div class="rrow"><span style="color:#a32d2d;font-size:12px;flex-shrink:0">▲</span><div class="rtext" style="margin-left:4px">${r}</div></div>`).join('');
-  const opps=(d.opps||[]).map(o=>`<div class="rrow"><span style="color:#3b6d11;font-size:12px;flex-shrink:0">↑</span><div class="rtext" style="margin-left:4px">${o}</div></div>`).join('');
+  const acts=(d.acts||[]).map((a,i)=>`<div class="action-item"><div class="action-num">${i+1}</div><div class="action-text">${a}</div></div>`).join('');
+  const risks=(d.risks||[]).map(r=>`<div class="risk-item"><span style="color:#c0392b;font-size:13px;flex-shrink:0;margin-top:1px">▲</span><div class="risk-text" style="margin-left:4px">${r}</div></div>`).join('');
+  const opps=(d.opps||[]).map(o=>`<div class="risk-item"><span style="color:#27ae60;font-size:13px;flex-shrink:0;margin-top:1px">↑</span><div class="risk-text" style="margin-left:4px">${o}</div></div>`).join('');
   document.getElementById('o').innerHTML=`
-  <div class="out">
-    <div class="out-head">${d.nc||'?'} notes analysed <span class="sent ${sc}">${d.sent}</span></div>
-    <div class="out-body">
-      <div class="stitle">Summary</div>
-      <div class="stext">${d.sum}</div>
-      <div style="margin-bottom:12px">${themes}</div>
-      <div class="div"></div>
-      <div class="stitle">Sentiment</div>
-      <div class="brow"><span class="blab">Positive</span><div class="btrk"><div class="bfil" style="width:${pp}%;background:#639922"></div></div><span class="bpct">${pp}%</span></div>
-      <div class="brow"><span class="blab">Neutral</span><div class="btrk"><div class="bfil" style="width:${np}%;background:#EF9F27"></div></div><span class="bpct">${np}%</span></div>
-      <div class="brow"><span class="blab">Negative</span><div class="btrk"><div class="bfil" style="width:${ngp}%;background:#E24B4A"></div></div><span class="bpct">${ngp}%</span></div>
-      <div style="font-size:11px;color:#605e5c;margin-top:6px;margin-bottom:12px;line-height:1.5">${d.sr}</div>
-      <div class="div"></div>
-      <div class="stitle">Action items</div>
-      <div style="margin-bottom:12px">${acts}</div>
-      <div class="div"></div>
-      <div class="two">
-        <div><div class="stitle">Risks</div>${risks||'<div class="rtext" style="color:#a19f9d">None identified</div>'}</div>
-        <div><div class="stitle">Opportunities</div>${opps||'<div class="rtext" style="color:#a19f9d">None identified</div>'}</div>
+  <div class="card">
+    <div class="result-header">
+      <div class="result-count">${d.nc||'?'} notes analysed<span>· AI summary</span></div>
+      <span class="sent-pill ${sc}">${d.sent}</span>
+    </div>
+    <div class="section">
+      <div class="section-label">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        Summary
+      </div>
+      <div class="summary-text">${d.sum}</div>
+      <div class="tags">${themes}</div>
+    </div>
+    <div class="section">
+      <div class="section-label">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+        Sentiment
+      </div>
+      <div class="sentiment-bars">
+        <div class="bar-row"><span class="bar-label">Positive</span><div class="bar-track"><div class="bar-fill" style="width:${pp}%;background:#27ae60"></div></div><span class="bar-pct">${pp}%</span></div>
+        <div class="bar-row"><span class="bar-label">Neutral</span><div class="bar-track"><div class="bar-fill" style="width:${np}%;background:#f39c12"></div></div><span class="bar-pct">${np}%</span></div>
+        <div class="bar-row"><span class="bar-label">Negative</span><div class="bar-track"><div class="bar-fill" style="width:${ngp}%;background:#e74c3c"></div></div><span class="bar-pct">${ngp}%</span></div>
+      </div>
+      <div class="sent-reason">${d.sr}</div>
+    </div>
+    <div class="section">
+      <div class="section-label">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        Action items
+      </div>
+      <div class="action-list">${acts}</div>
+    </div>
+    <div class="two-col">
+      <div class="two-col-item">
+        <div class="section-label">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Risks
+        </div>
+        ${risks||'<div class="none-text">None identified</div>'}
+      </div>
+      <div class="two-col-item">
+        <div class="section-label">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+          Opportunities
+        </div>
+        ${opps||'<div class="none-text">None identified</div>'}
       </div>
     </div>
   </div>`;
