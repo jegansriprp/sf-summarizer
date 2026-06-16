@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Notes Summarizer</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Segoe UI',sans-serif;background:#f3f2f1;padding:20px;}
+  textarea{width:100%;height:220px;padding:12px;border-radius:6px;border:1px solid #d2d0ce;font-size:13px;font-family:'Segoe UI',sans-serif;color:#252423;resize:vertical;background:#fff;}
+  textarea:focus{outline:none;border-color:#0078d4;}
+  .btn{background:#185FA5;color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:13px;cursor:pointer;font-family:'Segoe UI',sans-serif;font-weight:600;margin-top:10px;width:100%;}
+  .btn:hover{background:#0C447C;}
+  .btn:disabled{background:#B5D4F4;cursor:not-allowed;}
+  .hint{font-size:11px;color:#a19f9d;margin-top:6px;text-align:right;}
+  .loading{display:flex;align-items:center;gap:10px;padding:16px;color:#605e5c;font-size:13px;background:#fff;border-radius:6px;margin-top:12px;border:1px solid #d2d0ce;}
+  .spin{width:18px;height:18px;border:2px solid #d2d0ce;border-top-color:#185FA5;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .out{background:#fff;border:1px solid #d2d0ce;border-radius:6px;margin-top:12px;overflow:hidden;}
+  .out-head{background:#185FA5;padding:12px 16px;color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between;}
+  .sent-badge{font-size:11px;padding:3px 10px;border-radius:3px;font-weight:600;}
+  .sent-pos{background:#EAF3DE;color:#27500A;}
+  .sent-neu{background:#FAEEDA;color:#633806;}
+  .sent-neg{background:#FCEBEB;color:#791F1F;}
+  .out-body{padding:14px 16px;}
+  .section-title{font-size:11px;font-weight:700;color:#605e5c;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;}
+  .summary-text{font-size:13px;color:#252423;line-height:1.7;margin-bottom:14px;}
+  .tag{display:inline-block;font-size:11px;padding:3px 9px;border-radius:4px;margin:2px;font-weight:600;}
+  .t-blue{background:#E6F1FB;color:#0C447C;}
+  .t-green{background:#EAF3DE;color:#27500A;}
+  .t-amber{background:#FAEEDA;color:#633806;}
+  .t-teal{background:#E1F5EE;color:#085041;}
+  .t-red{background:#FCEBEB;color:#791F1F;}
+  .divider{height:1px;background:#edebe9;margin:14px 0;}
+  .action-row{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid #edebe9;}
+  .action-row:last-child{border-bottom:none;}
+  .action-num{width:20px;height:20px;background:#185FA5;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px;}
+  .action-text{font-size:13px;color:#252423;line-height:1.5;}
+  .risk-row{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;}
+  .risk-icon{font-size:13px;flex-shrink:0;margin-top:2px;}
+  .risk-text{font-size:12px;color:#252423;line-height:1.5;}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px;}
+  .bar-row{display:flex;gap:8px;align-items:center;margin-bottom:6px;}
+  .bar-label{font-size:11px;color:#605e5c;width:56px;flex-shrink:0;}
+  .bar-track{flex:1;height:7px;background:#f3f2f1;border-radius:4px;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:4px;}
+  .bar-pct{font-size:11px;color:#605e5c;width:30px;text-align:right;}
+</style>
+</head>
+<body>
+
+<textarea id="notes" placeholder="Paste your Salesforce SummaryOfCall notes here...
+
+Example:
+[14 Apr] Belrose Medical Centre — Face to Face: 3rd highest referrer on beaches, pleased to learn this. Wanted NIPT price...
+
+[20 May] Dee Why Medical — Practice Manager: A4 referrals. Advised Alexander and Suzannah now using e-referrals. 150 referral target discussed...
+
+[16 Apr] Nelson Plaza Clinic — Practice Manager: Advised integration date and 10 PRP practices in Hunter region..."></textarea>
+<div class="hint" id="hint">0 characters</div>
+<button class="btn" id="btn" onclick="go()">Summarize notes</button>
+
+<div id="out"></div>
+
+<script>
+const notes = document.getElementById('notes');
+const hint = document.getElementById('hint');
+
+notes.addEventListener('input', () => {
+  const lines = notes.value.split('\n').filter(l => l.trim().length > 20).length;
+  hint.textContent = notes.value.length.toLocaleString() + ' characters · ~' + lines + ' notes';
+});
+
+async function go() {
+  const text = notes.value.trim();
+  if(!text) { document.getElementById('out').innerHTML = '<div class="out"><div class="out-body" style="color:#a19f9d;">Paste some notes first.</div></div>'; return; }
+
+  const btn = document.getElementById('btn');
+  btn.disabled = true;
+  btn.textContent = 'Analysing...';
+
+  document.getElementById('out').innerHTML = '<div class="loading"><div class="spin"></div>Analysing notes with AI — usually takes 5-10 seconds...</div>';
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1200,
+        messages: [{
+          role: 'user',
+          content: `You are a senior CRM analyst for a medical imaging company. Analyse these Salesforce event notes and provide a COMBINED summary across all notes.
+
+Notes:
+${text.slice(0, 5000)}
+
+Respond ONLY in JSON (no markdown):
+{
+  "noteCount": <number>,
+  "summary": "<3-4 sentence combined executive summary>",
+  "themes": ["<theme1>","<theme2>","<theme3>","<theme4>","<theme5>"],
+  "sentiment": "positive|neutral|negative",
+  "sentimentBreakdown": {"positive": <0-100>, "neutral": <0-100>, "negative": <0-100>},
+  "sentimentReason": "<brief explanation>",
+  "actions": ["<action1>","<action2>","<action3>","<action4>","<action5>"],
+  "risks": ["<risk1>","<risk2>"],
+  "opportunities": ["<opp1>","<opp2>"]
+}`
+        }]
+      })
+    });
+
+    const data = await res.json();
+    const raw = data.content.map(b => b.text || '').join('');
+    const d = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    render(d);
+
+  } catch(e) {
+    document.getElementById('out').innerHTML = '<div class="out"><div class="out-body" style="color:#a32d2d;">Something went wrong — please try again.</div></div>';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Summarize notes';
+  }
+}
+
+function render(d) {
+  const sc = d.sentiment === 'positive' ? 'sent-pos' : d.sentiment === 'negative' ? 'sent-neg' : 'sent-neu';
+  const total = Math.max((d.sentimentBreakdown.positive||0)+(d.sentimentBreakdown.neutral||0)+(d.sentimentBreakdown.negative||0), 1);
+  const posPct = Math.round((d.sentimentBreakdown.positive||0)/total*100);
+  const neuPct = Math.round((d.sentimentBreakdown.neutral||0)/total*100);
+  const negPct = Math.round((d.sentimentBreakdown.negative||0)/total*100);
+  const tagCls = ['t-blue','t-green','t-amber','t-teal','t-red'];
+  const themes = (d.themes||[]).map((t,i) => `<span class="tag ${tagCls[i%5]}">${t}</span>`).join('');
+  const actions = (d.actions||[]).map((a,i) => `<div class="action-row"><div class="action-num">${i+1}</div><div class="action-text">${a}</div></div>`).join('');
+  const risks = (d.risks||[]).map(r => `<div class="risk-row"><span class="risk-icon" style="color:#a32d2d;">&#9650;</span><div class="risk-text">${r}</div></div>`).join('');
+  const opps = (d.opportunities||[]).map(o => `<div class="risk-row"><span class="risk-icon" style="color:#3b6d11;">&#8593;</span><div class="risk-text">${o}</div></div>`).join('');
+
+  document.getElementById('out').innerHTML = `
+    <div class="out">
+      <div class="out-head">
+        ${d.noteCount || '?'} notes analysed
+        <span class="sent-badge ${sc}">${d.sentiment}</span>
+      </div>
+      <div class="out-body">
+        <div class="section-title">Summary</div>
+        <div class="summary-text">${d.summary}</div>
+        <div style="margin-bottom:14px;">${themes}</div>
+        <div class="divider"></div>
+        <div class="section-title">Sentiment</div>
+        <div class="bar-row"><span class="bar-label">Positive</span><div class="bar-track"><div class="bar-fill" style="width:${posPct}%;background:#639922;"></div></div><span class="bar-pct">${posPct}%</span></div>
+        <div class="bar-row"><span class="bar-label">Neutral</span><div class="bar-track"><div class="bar-fill" style="width:${neuPct}%;background:#EF9F27;"></div></div><span class="bar-pct">${neuPct}%</span></div>
+        <div class="bar-row"><span class="bar-label">Negative</span><div class="bar-track"><div class="bar-fill" style="width:${negPct}%;background:#E24B4A;"></div></div><span class="bar-pct">${negPct}%</span></div>
+        <div style="font-size:11px;color:#605e5c;margin-top:6px;margin-bottom:14px;">${d.sentimentReason}</div>
+        <div class="divider"></div>
+        <div class="section-title">Action items</div>
+        <div style="margin-bottom:14px;">${actions}</div>
+        <div class="divider"></div>
+        <div class="two-col">
+          <div>
+            <div class="section-title">Risks</div>
+            ${risks || '<div class="risk-text" style="color:#a19f9d;">None identified</div>'}
+          </div>
+          <div>
+            <div class="section-title">Opportunities</div>
+            ${opps || '<div class="risk-text" style="color:#a19f9d;">None identified</div>'}
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+</script>
+</body>
+</html>
