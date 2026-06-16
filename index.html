@@ -7,12 +7,13 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Segoe UI',sans-serif;background:#f3f2f1;padding:20px;max-width:900px;margin:0 auto;}
-.header{background:#185FA5;border-radius:8px;padding:14px 18px;margin-bottom:16px;}
+.header{background:#185FA5;border-radius:8px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;}
 .header-title{color:#fff;font-size:15px;font-weight:600;}
 .header-sub{color:#B5D4F4;font-size:11px;margin-top:3px;}
+.auto-badge{background:#EAF3DE;color:#27500A;font-size:11px;padding:4px 10px;border-radius:4px;font-weight:600;}
 .notes-card{background:#fff;border:1px solid #d2d0ce;border-radius:6px;padding:14px 16px;margin-bottom:12px;}
 .notes-label{font-size:11px;font-weight:600;color:#605e5c;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;}
-textarea{width:100%;height:200px;padding:10px;border-radius:6px;border:1px solid #d2d0ce;font-size:12px;font-family:'Segoe UI',sans-serif;color:#252423;resize:vertical;background:#fafafa;}
+textarea{width:100%;height:180px;padding:10px;border-radius:6px;border:1px solid #d2d0ce;font-size:12px;font-family:'Segoe UI',sans-serif;color:#252423;resize:vertical;background:#fafafa;}
 textarea:focus{outline:none;border-color:#0078d4;background:#fff;}
 .hint{font-size:10px;color:#a19f9d;text-align:right;margin-top:5px;}
 .btn{background:#185FA5;color:#fff;border:none;padding:11px;border-radius:6px;font-size:14px;cursor:pointer;width:100%;font-weight:600;font-family:'Segoe UI',sans-serif;margin-top:4px;}
@@ -49,18 +50,26 @@ textarea:focus{outline:none;border-color:#0078d4;background:#fff;}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .rrow{display:flex;gap:6px;margin-bottom:6px;}
 .rtext{font-size:12px;color:#252423;line-height:1.4;}
+.info{background:#E6F1FB;border:1px solid #B5D4F4;border-radius:6px;padding:10px 14px;font-size:12px;color:#0C447C;margin-bottom:12px;line-height:1.6;}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="header-title">PRP Diagnostic Imaging · Notes Summarizer</div>
-  <div class="header-sub">Filter Power BI by territory first · paste notes · get instant AI summary</div>
+  <div>
+    <div class="header-title">PRP Diagnostic Imaging · Notes Summarizer</div>
+    <div class="header-sub">Auto-loads notes from Power BI · paste manually or let it auto-summarize</div>
+  </div>
+  <span class="auto-badge" id="autoBadge" style="display:none">Auto-loaded from Power BI</span>
+</div>
+
+<div id="infoBox" class="info" style="display:none">
+  Notes have been automatically loaded from your Power BI filter. Click Summarize to analyse them.
 </div>
 
 <div class="notes-card">
-  <div class="notes-label">Paste notes</div>
-  <textarea id="n" placeholder="Filter Power BI by one territory first (e.g. Northern Sydney Region), then copy the SummaryOfCall column and paste here..."></textarea>
+  <div class="notes-label">Notes <span id="noteSource" style="font-weight:400;text-transform:none;font-size:10px;color:#a19f9d;"></span></div>
+  <textarea id="n" placeholder="Filter Power BI by territory, then click the Summarize button in Power BI — notes will auto-load here. Or paste manually."></textarea>
   <div class="hint" id="h">0 characters</div>
   <button class="btn" id="btn" onclick="go()">Summarize notes</button>
 </div>
@@ -70,10 +79,30 @@ textarea:focus{outline:none;border-color:#0078d4;background:#fff;}
 <script>
 const WORKER = 'https://prp-summarizer.srinath-jagannathan.workers.dev';
 
-document.getElementById('n').addEventListener('input', function(){
-  const lines = this.value.split('\n').filter(l=>l.trim().length>15).length;
-  document.getElementById('h').textContent = this.value.length.toLocaleString()+' characters · ~'+lines+' notes';
-});
+function init() {
+  const params = new URLSearchParams(window.location.search);
+  const notes = params.get('notes');
+  const territory = params.get('territory');
+  if(notes && notes.trim().length > 0) {
+    const decoded = decodeURIComponent(notes);
+    document.getElementById('n').value = decoded;
+    document.getElementById('autoBadge').style.display = 'inline-block';
+    document.getElementById('infoBox').style.display = 'block';
+    if(territory) {
+      document.getElementById('noteSource').textContent = '· ' + decodeURIComponent(territory);
+    }
+    updateHint();
+    go();
+  }
+}
+
+function updateHint() {
+  const val = document.getElementById('n').value;
+  const lines = val.split('\n').filter(l=>l.trim().length>15).length;
+  document.getElementById('h').textContent = val.length.toLocaleString()+' characters · ~'+lines+' notes';
+}
+
+document.getElementById('n').addEventListener('input', updateHint);
 
 async function go(){
   const txt = document.getElementById('n').value.trim();
@@ -84,7 +113,7 @@ async function go(){
   try{
     const res = await fetch(WORKER, {
       method:'POST',
-      headers:{ 'Content-Type':'application/json' },
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         model:'claude-sonnet-4-6',
         max_tokens:1000,
@@ -143,6 +172,8 @@ function render(d){
     </div>
   </div>`;
 }
+
+init();
 </script>
 </body>
 </html>
