@@ -1,1 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PRP Notes Summarizer</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',sans-serif;background:#f3f2f1;padding:20px;max-width:900px;margin:0 auto;}
+.header{background:#185FA5;border-radius:8px;padding:14px 18px;margin-bottom:16px;}
+.header-title{color:#fff;font-size:15px;font-weight:600;}
+.header-sub{color:#B5D4F4;font-size:11px;margin-top:3px;}
+.notes-card{background:#fff;border:1px solid #d2d0ce;border-radius:6px;padding:14px 16px;margin-bottom:12px;}
+.notes-label{font-size:11px;font-weight:600;color:#605e5c;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;}
+textarea{width:100%;height:200px;padding:10px;border-radius:6px;border:1px solid #d2d0ce;font-size:12px;font-family:'Segoe UI',sans-serif;color:#252423;resize:vertical;background:#fafafa;}
+textarea:focus{outline:none;border-color:#0078d4;background:#fff;}
+.hint{font-size:10px;color:#a19f9d;text-align:right;margin-top:5px;}
+.btn{background:#185FA5;color:#fff;border:none;padding:11px;border-radius:6px;font-size:14px;cursor:pointer;width:100%;font-weight:600;font-family:'Segoe UI',sans-serif;margin-top:4px;}
+.btn:hover{background:#0C447C;}
+.btn:disabled{background:#B5D4F4;cursor:not-allowed;}
+.loading{display:flex;align-items:center;gap:10px;padding:16px;color:#605e5c;font-size:13px;background:#fff;border-radius:6px;margin-top:12px;border:1px solid #d2d0ce;}
+.spin{width:18px;height:18px;border:2px solid #d2d0ce;border-top-color:#185FA5;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.out{background:#fff;border:1px solid #d2d0ce;border-radius:6px;margin-top:12px;overflow:hidden;}
+.out-head{background:#185FA5;padding:12px 16px;color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between;}
+.sent{font-size:11px;padding:3px 10px;border-radius:3px;font-weight:600;}
+.sp{background:#EAF3DE;color:#27500A;}
+.sn{background:#FAEEDA;color:#633806;}
+.sg{background:#FCEBEB;color:#791F1F;}
+.out-body{padding:14px 16px;}
+.stitle{font-size:11px;font-weight:700;color:#605e5c;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;}
+.stext{font-size:13px;color:#252423;line-height:1.7;margin-bottom:12px;}
+.tag{display:inline-block;font-size:11px;padding:3px 9px;border-radius:3px;margin:2px;font-weight:600;}
+.tb{background:#E6F1FB;color:#0C447C;}
+.tg{background:#EAF3DE;color:#27500A;}
+.ta{background:#FAEEDA;color:#633806;}
+.tt{background:#E1F5EE;color:#085041;}
+.tr{background:#FCEBEB;color:#791F1F;}
+.div{height:1px;background:#edebe9;margin:12px 0;}
+.arow{display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid #edebe9;}
+.arow:last-child{border-bottom:none;}
+.anum{width:19px;height:19px;background:#185FA5;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px;}
+.atext{font-size:12px;color:#252423;line-height:1.5;}
+.brow{display:flex;gap:8px;align-items:center;margin-bottom:5px;}
+.blab{font-size:11px;color:#605e5c;width:56px;flex-shrink:0;}
+.btrk{flex:1;height:7px;background:#f3f2f1;border-radius:3px;overflow:hidden;}
+.bfil{height:100%;border-radius:3px;}
+.bpct{font-size:11px;color:#605e5c;width:30px;text-align:right;}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.rrow{display:flex;gap:6px;margin-bottom:6px;}
+.rtext{font-size:12px;color:#252423;line-height:1.4;}
+</style>
+</head>
+<body>
 
+<div class="header">
+  <div class="header-title">PRP Diagnostic Imaging · Notes Summarizer</div>
+  <div class="header-sub">Filter Power BI by territory first · paste notes · get instant AI summary</div>
+</div>
+
+<div class="notes-card">
+  <div class="notes-label">Paste notes</div>
+  <textarea id="n" placeholder="Filter Power BI by one territory first (e.g. Northern Sydney Region), then copy the SummaryOfCall column and paste here..."></textarea>
+  <div class="hint" id="h">0 characters</div>
+  <button class="btn" id="btn" onclick="go()">Summarize notes</button>
+</div>
+
+<div id="o"></div>
+
+<script>
+const WORKER = 'https://prp-summarizer.srinath-jagannathan.workers.dev';
+
+document.getElementById('n').addEventListener('input', function(){
+  const lines = this.value.split('\n').filter(l=>l.trim().length>15).length;
+  document.getElementById('h').textContent = this.value.length.toLocaleString()+' characters · ~'+lines+' notes';
+});
+
+async function go(){
+  const txt = document.getElementById('n').value.trim();
+  if(!txt){ document.getElementById('o').innerHTML='<div class="out"><div class="out-body" style="color:#a19f9d;font-size:13px;">Paste some notes first.</div></div>'; return; }
+  const btn = document.getElementById('btn');
+  btn.disabled=true; btn.textContent='Analysing...';
+  document.getElementById('o').innerHTML='<div class="loading"><div class="spin"></div>Analysing notes with AI — usually 5-10 seconds...</div>';
+  try{
+    const res = await fetch(WORKER, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:1000,
+        messages:[{role:'user',content:`Analyse these Salesforce event notes for PRP Diagnostic Imaging. COMBINED analysis only — not per note.
+
+Notes:
+${txt.slice(0,5000)}
+
+Respond ONLY in JSON no markdown:
+{"nc":<count>,"sum":"<3-4 sentence summary>","themes":["t1","t2","t3","t4","t5"],"sent":"positive|neutral|negative","sb":{"p":<0-100>,"n":<0-100>,"ng":<0-100>},"sr":"<reason>","acts":["a1","a2","a3","a4","a5"],"risks":["r1","r2"],"opps":["o1","o2"]}`}]
+      })
+    });
+    if(!res.ok){ const e=await res.json(); throw new Error(e.error?.message||'Error '+res.status); }
+    const data=await res.json();
+    const d=JSON.parse(data.content.map(b=>b.text||'').join('').replace(/```json|```/g,'').trim());
+    render(d);
+  }catch(e){
+    document.getElementById('o').innerHTML=`<div class="out"><div class="out-body" style="color:#a32d2d;font-size:13px;">Error: ${e.message}</div></div>`;
+  }finally{
+    btn.disabled=false; btn.textContent='Summarize notes';
+  }
+}
+
+function render(d){
+  const sc=d.sent==='positive'?'sp':d.sent==='negative'?'sg':'sn';
+  const tot=Math.max((d.sb.p||0)+(d.sb.n||0)+(d.sb.ng||0),1);
+  const pp=Math.round((d.sb.p||0)/tot*100);
+  const np=Math.round((d.sb.n||0)/tot*100);
+  const ngp=Math.round((d.sb.ng||0)/tot*100);
+  const tc=['tb','tg','ta','tt','tr'];
+  const themes=(d.themes||[]).map((t,i)=>`<span class="tag ${tc[i%5]}">${t}</span>`).join('');
+  const acts=(d.acts||[]).map((a,i)=>`<div class="arow"><div class="anum">${i+1}</div><div class="atext">${a}</div></div>`).join('');
+  const risks=(d.risks||[]).map(r=>`<div class="rrow"><span style="color:#a32d2d;font-size:12px;flex-shrink:0">▲</span><div class="rtext" style="margin-left:4px">${r}</div></div>`).join('');
+  const opps=(d.opps||[]).map(o=>`<div class="rrow"><span style="color:#3b6d11;font-size:12px;flex-shrink:0">↑</span><div class="rtext" style="margin-left:4px">${o}</div></div>`).join('');
+  document.getElementById('o').innerHTML=`
+  <div class="out">
+    <div class="out-head">${d.nc||'?'} notes analysed <span class="sent ${sc}">${d.sent}</span></div>
+    <div class="out-body">
+      <div class="stitle">Summary</div>
+      <div class="stext">${d.sum}</div>
+      <div style="margin-bottom:12px">${themes}</div>
+      <div class="div"></div>
+      <div class="stitle">Sentiment</div>
+      <div class="brow"><span class="blab">Positive</span><div class="btrk"><div class="bfil" style="width:${pp}%;background:#639922"></div></div><span class="bpct">${pp}%</span></div>
+      <div class="brow"><span class="blab">Neutral</span><div class="btrk"><div class="bfil" style="width:${np}%;background:#EF9F27"></div></div><span class="bpct">${np}%</span></div>
+      <div class="brow"><span class="blab">Negative</span><div class="btrk"><div class="bfil" style="width:${ngp}%;background:#E24B4A"></div></div><span class="bpct">${ngp}%</span></div>
+      <div style="font-size:11px;color:#605e5c;margin-top:6px;margin-bottom:12px;line-height:1.5">${d.sr}</div>
+      <div class="div"></div>
+      <div class="stitle">Action items</div>
+      <div style="margin-bottom:12px">${acts}</div>
+      <div class="div"></div>
+      <div class="two">
+        <div><div class="stitle">Risks</div>${risks||'<div class="rtext" style="color:#a19f9d">None identified</div>'}</div>
+        <div><div class="stitle">Opportunities</div>${opps||'<div class="rtext" style="color:#a19f9d">None identified</div>'}</div>
+      </div>
+    </div>
+  </div>`;
+}
+</script>
+</body>
+</html>
